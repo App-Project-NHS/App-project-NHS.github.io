@@ -1,0 +1,106 @@
+body {
+font-family: Arial, sans-serif;
+background-color: #f4f8fb;
+margin: 0;
+padding: 0;
+}
+
+header {
+background-color: #005eb8;
+color: white;
+padding: 15px 0;
+}
+
+.header-container {
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 20px;
+}
+
+.logo {
+width: 80px;
+height: auto;
+}
+
+
+main {
+padding: 30px;
+max-width: 900px;
+margin: 0 auto;
+}
+
+h2, h3 {
+color: #005eb8;
+}
+
+.form-section {
+background-color: white;
+padding: 20px;
+border-radius: 8px;
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+margin-bottom: 30px;
+}
+
+form {
+display: flex;
+flex-direction: column;
+}
+
+label {
+margin-top: 10px;
+font-weight: bold;
+}
+
+input, select, button {
+margin-top: 5px;
+padding: 10px;
+border: 1px solid #ccc;
+border-radius: 4px;
+}
+
+button {
+background-color: #0072ce;
+color: white;
+font-weight: bold;
+border: none;
+cursor: pointer;
+margin-top: 15px;
+}
+
+button:hover {
+background-color: #005eb8;
+}
+
+.results-section table {
+width: 100%;
+border-collapse: collapse;
+background-color: white;
+border-radius: 8px;
+overflow: hidden;
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.results-section th, .results-section td {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+  text-align: left; /* This rule aligns all text to the left */
+}
+
+.results-section th {
+background-color: #005eb8;
+color: white;
+}
+
+.results-section tr:hover {
+background-color: #f1f1f1;
+}
+
+
+footer {
+text-align: center;
+padding: 15px;
+background-color: #003087;
+color: white;
+font-size: 0.9em;
+}

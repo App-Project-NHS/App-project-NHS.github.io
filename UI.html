@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/nhs.css">
+  <title>NHS Services Locator</title>
+  <script src="js/search2.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="header-container">
+      <img src="logo.png" alt="NHS Logo" class="logo">
+    </div>
+  </header>
+
+  <main>
+    <section class="form-section">
+      <h2>Find Nearby Services</h2>
+      <form id="searchForm">
+        <label for="postcode">Patient Postcode:</label>
+        <input type="text" id="postcode" placeholder="e.g. LL57 1UT" required>
+
+        <label for="age">Patient Age:</label>
+        <input type="number" id="age" placeholder="e.g. 32" required>
+
+        <label for="service">Select Service:</label>
+        <select id="service">
+          <option value="gp">GP Surgery</option>
+          <option value="schools">School / Nursery</option>
+          <option value="dentists">Dentist</option>
+          <option value="opticians">Optician</option>
+        </select>
+
+        <button type="submit">Find Services</button>
+      </form>
+    </section>
+
+    <section class="results-section">
+      <h3>Results (Ordered by Distance)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Service Name</th>
+            <th>Address</th>
+            <th>Telephone</th>
+            <th>Distance</th>
+            <th>Select</th>
+          </tr>
+        </thead>
+        <tbody id="resultsTable"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 NHS Patient Services Locator | Prototype Version</p>
+  </footer>
+
+</body>
+</html>
