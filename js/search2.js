@@ -13,7 +13,6 @@ form.addEventListener("submit", async (e) => {
   const service = document.getElementById("service").value;
 
 const res = await fetch(
-    // Use your full Render URL here
     `https://nhs-backend.onrender.com/api/search?postcode=${encodeURIComponent(postcode)}&age=${age}&service=${service}`
   );
 
