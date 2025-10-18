@@ -12,8 +12,9 @@ form.addEventListener("submit", async (e) => {
   const age = document.getElementById("age").value.trim();
   const service = document.getElementById("service").value;
 
-  const res = await fetch(
-    `/api/search?postcode=${encodeURIComponent(postcode)}&age=${age}&service=${service}`
+const res = await fetch(
+    // Use your full Render URL here
+    `https://nhs-backend.onrender.com/api/search?postcode=${encodeURIComponent(postcode)}&age=${age}&service=${service}`
   );
 
   console.log("...Search finished. Got response from server.");

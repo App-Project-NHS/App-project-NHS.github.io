@@ -110,7 +110,8 @@ app.get("/api/search", async (req, res) => {
 });
 
 // --- Start the Server ---
-app.listen(3000, () => {
-  // Now, your app will be available at http://localhost:3000
-  console.log("✅ Server running on http://localhost:3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
