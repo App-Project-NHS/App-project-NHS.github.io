@@ -1,7 +1,7 @@
 const mysql = require("mysql2/promise");
 const cors = require("cors");
 const express = require("express");
-const path = require("path"); // <-- ADD THIS MODULE
+const path = require("path");
 const app = express();
 
 app.use(cors());
@@ -11,109 +11,114 @@ const staticPath = path.join(__dirname, '..');
 app.use(express.static(staticPath));
 
 const pool = mysql.createPool({
-  host: "mysql.cs.bangor.ac.uk",
-  user: "jcr23gxs",
-  password: "32392a0d3f",
-  database: "jcr23gxs",
-  port: 3306,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  host: "mysql.cs.bangor.ac.uk",
+  user: "jcr23gxs",
+  password: "32392a0d3f",
+  database: "jcr23gxs",
+  port: 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 console.log("✅ Connection pool created.");
 
 app.get("/api/search", async (req, res) => {
-  console.log("--- Search request received ---");
+  console.log("--- Search request received ---");
 
-  const { postcode, service, age } = req.query;
-  const searchRange = parseFloat(age) || 30;
-  let serviceTable = "";
+  const { postcode, service, age } = req.query;
+  const searchRange = parseFloat(age) || 30; // Search *within* 30 miles...
+  let serviceTable = "";
 
-  if (service === "dentists") serviceTable = "dentists";
-  else if (service === "schools") serviceTable = "schools";
-  else if (service === "opticians") serviceTable = "opticians";
-  else if (service === "gp") serviceTable = "gp";
-  else return res.status(400).json({ error: "Invalid service" });
+  if (service === "dentists") serviceTable = "dentists";
+  else if (service === "schools") serviceTable = "schools";
+  else if (service === "opticians") serviceTable = "opticians";
+  else if (service === "gp") serviceTable = "gp";
+  else return res.status(400).json({ error: "Invalid service" });
 
-  console.log(`Searching for ${service} within ${searchRange} miles of ${postcode}`);
+  console.log(`Searching for ${service} within ${searchRange} miles of ${postcode}`);
 
-  let db;
-  try {
-    db = await pool.getConnection();
-    console.log("Connection borrowed from pool.");
+  let db;
+  try {
+    db = await pool.getConnection();
+    console.log("Connection borrowed from pool.");
 
-    const patientLocationQuery = "SELECT latitude, longitude FROM Postcode WHERE pcd2 = ?";
-    const [locationResults] = await db.query(patientLocationQuery, [postcode]);
+    const patientLocationQuery = "SELECT latitude, longitude FROM Postcode WHERE pcd2 = ?";
+    const [locationResults] = await db.query(patientLocationQuery, [postcode]);
 
-    if (locationResults.length === 0) {
-      console.log("Patient postcode not found in database.");
-      db.release();
-      return res.json([]);
-    }
+    if (locationResults.length === 0) {
+      console.log("Patient postcode not found in database.");
+      db.release();
+      return res.json([]);
+    }
 
-    const patientLat = locationResults[0].latitude;
-    const patientLon = locationResults[0].longitude;
-    console.log(`Patient location found: ${patientLat}, ${patientLon}`);
+    const patientLat = locationResults[0].latitude;
+    const patientLon = locationResults[0].longitude;
+    console.log(`Patient location found: ${patientLat}, ${patientLon}`);
 
-    const latRange = searchRange / 69.0;
-    const lonRange = searchRange / (69.0 * Math.cos(patientLat * (Math.PI / 180)));
-    const minLat = patientLat - latRange;
-    const maxLat = patientLat + latRange;
-    const minLon = patientLon - lonRange;
-    const maxLon = patientLon + lonRange;
+    const latRange = searchRange / 69.0;
+    const lonRange = searchRange / (69.0 * Math.cos(patientLat * (Math.PI / 180)));
+    const minLat = patientLat - latRange;
+    const maxLat = patientLat + latRange;
+    const minLon = patientLon - lonRange;
+    const maxLon = patientLon + lonRange;
 
-    const distanceQuery = `
-      SELECT t1.*, (3959 * acos(
-          cos(radians(?)) * cos(radians(p.latitude)) *
-          cos(radians(p.longitude) - radians(?)) +
-          sin(radians(?)) * sin(radians(p.latitude))
-        )) AS distance
-      FROM ${serviceTable} AS t1
-      JOIN Postcode AS p ON t1.postcode = p.pcd2
-      WHERE
-        p.latitude BETWEEN ? AND ?
-        AND p.longitude BETWEEN ? AND ?
-      HAVING distance < ?
-      ORDER BY distance ASC
-      LIMIT ?
-    `;
+    // --- FIX 1: Removed the stray quote ' from the end ---
+    const distanceQuery = `
+      SELECT t1.*, (3959 * acos(
+          cos(radians(?)) * cos(radians(p.latitude)) *
+          cos(radians(p.longitude) - radians(?)) +
+          sin(radians(?)) * sin(radians(p.latitude))
+        )) AS distance
+      FROM ${serviceTable} AS t1
+      JOIN Postcode AS p ON t1.postcode = p.pcd2
+      WHERE
+        p.latitude BETWEEN ? AND ?
+        AND p.longitude BETWEEN ? AND ?
+      HAVING distance < ?
+      ORDER BY distance ASC
+      LIMIT ?
+    `; // <-- The stray ' was here
 
-    const params = [
-      patientLat, patientLon, patientLat,
-      minLat, maxLat,
-      minLon, maxLon,
-      searchRange
-    ];
+    // --- FIX 2: Added the value 15 to the params array ---
+    const queryLimit = 15; // ...but only show the top 15 results
 
-    console.log("Running final optimized distance query...");
-    const [results] = await db.query(distanceQuery, params);
+    const params = [
+      patientLat, patientLon, patientLat, // for acos
+      minLat, maxLat,                   // for latitude
+      minLon, maxLon,                   // for longitude
+      searchRange,                      // for HAVING distance
+      queryLimit                        // for LIMIT ?
+    ];
 
-    console.log(`Query finished. Found ${results.length} results.`);
+    console.log("Running final optimized distance query...");
+    const [results] = await db.query(distanceQuery, params);
 
-    // Format results
-    const formattedResults = results.map(row => ({
-      ...row,
-      distance: parseFloat(row.distance).toFixed(2)
-    }));
+    console.log(`Query finished. Found ${results.length} results.`);
 
-    res.json(formattedResults);
+    // Format results
+    const formattedResults = results.map(row => ({
+      ...row,
+      distance: parseFloat(row.distance).toFixed(2)
+    }));
 
-  } catch (err) {
-    console.error("An error occurred during the search:", err);
-    return res.status(500).json({ error: "Database query failed" });
+    res.json(formattedResults);
 
-  } finally {
-    if (db) {
-      db.release();
-      console.log("Connection released back to pool.");
-    }
-  }
+  } catch (err) {
+    console.error("An error occurred during the search:", err);
+    return res.status(500).json({ error: "Database query failed" });
+
+  } finally {
+    if (db) {
+      db.release();
+      console.log("Connection released back to pool.");
+    }
+  }
 });
 
 // --- Start the Server ---
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
