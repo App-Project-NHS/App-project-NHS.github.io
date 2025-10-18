@@ -76,7 +76,7 @@ app.get("/api/search", async (req, res) => {
         AND p.longitude BETWEEN ? AND ?
       HAVING distance < ?
       ORDER BY distance ASC
-      LIMIT 10
+      LIMIT ?
     `;
 
     const params = [
