@@ -29,13 +29,13 @@ const res = await fetch(
 
   data.forEach(row => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${row.name}</td>
-      <td>${row.street}</td>
-      <td>${row.telephone || 'N/A'}</td>
-      <td>${row.distance} miles</td> 
-      <td><button>Select</button></td>
-    `;
+tr.innerHTML = `
+  <td>${row.name}</td>
+  <td>${row.street}</td>
+  <td>${row.telephone || 'N/A'}</td>
+  <td>${row.distance || 'N/A'}</td>
+  <td><button>Select</button></td>
+`;
     tableBody.appendChild(tr);
   });
 });
