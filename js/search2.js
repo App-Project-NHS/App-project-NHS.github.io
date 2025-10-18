@@ -32,8 +32,9 @@ const res = await fetch(
 tr.innerHTML = `
   <td>${row.name}</td>
   <td>${row.street}</td>
+  <td>${row.postcode}</td>
   <td>${row.telephone || 'N/A'}</td>
-  <td>${row.distance || 'N/A'}</td>
+  <td>${row.distance || 'N/A'}miles</td>
   <td><button>Select</button></td>
 `;
     tableBody.appendChild(tr);
