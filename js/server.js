@@ -1,12 +1,15 @@
 const mysql = require("mysql2/promise");
 const cors = require("cors");
 const express = require("express");
-const path = require("path"); 
+const path = require("path");
+
 const app = express();
+
+const PORT = process.env.PORT || 3000;
+const CACHE_DURATION_MS = 1000 * 60 * 60; // 1 Hour
 
 app.use(cors());
 app.use(express.json());
-
 const staticPath = path.join(__dirname, '..');
 app.use(express.static(staticPath));
 
@@ -21,43 +24,59 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-console.log("✅ Connection pool created.");
+const locationCache = new Map();
+
+const ALLOWED_TABLES = {
+  dentists: "dentists",
+  schools: "schools",
+  opticians: "opticians",
+  gp: "gp"
+};
+
+console.log("✅ Server starting...");
 
 app.get("/api/search", async (req, res) => {
-  console.log("--- Search request received ---");
-
   const { postcode, service, range } = req.query;
+
+
+  if (!postcode || !service) {
+    return res.status(400).json({ error: "Missing postcode or service" });
+  }
+
+  const serviceTable = ALLOWED_TABLES[service];
+  if (!serviceTable) {
+    return res.status(400).json({ error: "Invalid service type" });
+  }
+
   const searchRange = parseFloat(range) || 30;
-  let serviceTable = "";
 
-  if (service === "dentists") serviceTable = "dentists";
-  else if (service === "schools") serviceTable = "schools";
-  else if (service === "opticians") serviceTable = "opticians";
-  else if (service === "gp") serviceTable = "gp";
-  else return res.status(400).json({ error: "Invalid service" });
-
-  console.log(`Searching for ${service} within ${searchRange} miles of ${postcode}`);
-
-  let db;
   try {
-    db = await pool.getConnection();
-    console.log("Connection borrowed from pool.");
+    let patientLat, patientLon;
 
-    const patientLocationQuery = "SELECT latitude, longitude FROM Postcode WHERE pcd2 = ?";
-    const [locationResults] = await db.query(patientLocationQuery, [postcode]);
 
-    if (locationResults.length === 0) {
-      console.log("Patient postcode not found in database.");
-      db.release();
-      return res.json([]);
+    const cachedLoc = locationCache.get(postcode);
+    const now = Date.now();
+
+    if (cachedLoc && (now - cachedLoc.timestamp < CACHE_DURATION_MS)) {
+      patientLat = cachedLoc.lat;
+      patientLon = cachedLoc.lon;
+    } else {
+      const patientLocationQuery = "SELECT latitude, longitude FROM Postcode WHERE pcd2 = ?";
+      const [locationResults] = await pool.query(patientLocationQuery, [postcode]);
+
+      if (locationResults.length === 0) {
+        return res.json([]); 
+      }
+
+      patientLat = locationResults[0].latitude;
+      patientLon = locationResults[0].longitude;
+
+      locationCache.set(postcode, { lat: patientLat, lon: patientLon, timestamp: now });
     }
-
-    const patientLat = locationResults[0].latitude;
-    const patientLon = locationResults[0].longitude;
-    console.log(`Patient location found: ${patientLat}, ${patientLon}`);
 
     const latRange = searchRange / 69.0;
     const lonRange = searchRange / (69.0 * Math.cos(patientLat * (Math.PI / 180)));
+    
     const minLat = patientLat - latRange;
     const maxLat = patientLat + latRange;
     const minLon = patientLon - lonRange;
@@ -80,18 +99,14 @@ app.get("/api/search", async (req, res) => {
     `;
 
     const params = [
-      patientLat, patientLon, patientLat,
-      minLat, maxLat,
-      minLon, maxLon,
-      searchRange
+      patientLat, patientLon, patientLat, 
+      minLat, maxLat,                     
+      minLon, maxLon,                     
+      searchRange                        
     ];
 
-    console.log("Running final optimized distance query...");
-    const [results] = await db.query(distanceQuery, params);
+    const [results] = await pool.query(distanceQuery, params);
 
-    console.log(`Query finished. Found ${results.length} results.`);
-
-    // Format results
     const formattedResults = results.map(row => ({
       ...row,
       distance: parseFloat(row.distance).toFixed(2)
@@ -100,20 +115,12 @@ app.get("/api/search", async (req, res) => {
     res.json(formattedResults);
 
   } catch (err) {
-    console.error("An error occurred during the search:", err);
-    return res.status(500).json({ error: "Database query failed" });
-
-  } finally {
-    if (db) {
-      db.release();
-      console.log("Connection released back to pool.");
-    }
+    console.error("Search Error:", err.message);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// --- Start the Server ---
-const PORT = process.env.PORT || 3000;
-
+// --- Start Server ---
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
