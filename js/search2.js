@@ -9,11 +9,11 @@ form.addEventListener("submit", async (e) => {
   tableBody.innerHTML = `<tr><td colspan="5">Loading results...</td></tr>`;
 
   const postcode = document.getElementById("postcode").value.trim();
-  const age = document.getElementById("age").value.trim();
+  const range = document.getElementById("range").value.trim();
   const service = document.getElementById("service").value;
 
 const res = await fetch(
-    `https://nhs-backend.onrender.com/api/search?postcode=${encodeURIComponent(postcode)}&age=${age}&service=${service}`
+    `https://nhs-backend.onrender.com/api/search?postcode=${encodeURIComponent(postcode)}&range=${range}&service=${service}`
   );
 
   console.log("...Search finished. Got response from server.");

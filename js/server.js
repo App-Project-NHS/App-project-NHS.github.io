@@ -26,8 +26,8 @@ console.log("✅ Connection pool created.");
 app.get("/api/search", async (req, res) => {
   console.log("--- Search request received ---");
 
-  const { postcode, service, age } = req.query;
-  const searchRange = parseFloat(age) || 30;
+  const { postcode, service, range } = req.query;
+  const searchRange = parseFloat(range) || 30;
   let serviceTable = "";
 
   if (service === "dentists") serviceTable = "dentists";
