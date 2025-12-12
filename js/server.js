@@ -6,7 +6,7 @@ const path = require("path");
 const app = express();
 
 const PORT = process.env.PORT || 3000;
-const CACHE_DURATION_MS = 1000 * 60 * 60; // 1 Hour
+const CACHE_DURATION_MS = 1000 * 60 * 60; 
 
 app.use(cors());
 app.use(express.json());
@@ -33,11 +33,10 @@ const ALLOWED_TABLES = {
   gp: "gp"
 };
 
-console.log("✅ Server starting...");
+console.log("✅ Server starting in Optimized Mode...");
 
 app.get("/api/search", async (req, res) => {
   const { postcode, service, range } = req.query;
-
 
   if (!postcode || !service) {
     return res.status(400).json({ error: "Missing postcode or service" });
@@ -48,13 +47,13 @@ app.get("/api/search", async (req, res) => {
     return res.status(400).json({ error: "Invalid service type" });
   }
 
+  const cleanPostcode = postcode.replace(/\s+/g, '').toUpperCase();
   const searchRange = parseFloat(range) || 30;
 
   try {
     let patientLat, patientLon;
 
-
-    const cachedLoc = locationCache.get(postcode);
+    const cachedLoc = locationCache.get(cleanPostcode);
     const now = Date.now();
 
     if (cachedLoc && (now - cachedLoc.timestamp < CACHE_DURATION_MS)) {
@@ -62,7 +61,7 @@ app.get("/api/search", async (req, res) => {
       patientLon = cachedLoc.lon;
     } else {
       const patientLocationQuery = "SELECT latitude, longitude FROM Postcode WHERE pcd2 = ?";
-      const [locationResults] = await pool.query(patientLocationQuery, [postcode]);
+      const [locationResults] = await pool.query(patientLocationQuery, [cleanPostcode]);
 
       if (locationResults.length === 0) {
         return res.json([]); 
@@ -71,28 +70,27 @@ app.get("/api/search", async (req, res) => {
       patientLat = locationResults[0].latitude;
       patientLon = locationResults[0].longitude;
 
-      locationCache.set(postcode, { lat: patientLat, lon: patientLon, timestamp: now });
+      locationCache.set(cleanPostcode, { lat: patientLat, lon: patientLon, timestamp: now });
     }
 
     const latRange = searchRange / 69.0;
     const lonRange = searchRange / (69.0 * Math.cos(patientLat * (Math.PI / 180)));
-    
+
     const minLat = patientLat - latRange;
     const maxLat = patientLat + latRange;
     const minLon = patientLon - lonRange;
     const maxLon = patientLon + lonRange;
 
     const distanceQuery = `
-      SELECT t1.*, (3959 * acos(
-          cos(radians(?)) * cos(radians(p.latitude)) *
-          cos(radians(p.longitude) - radians(?)) +
-          sin(radians(?)) * sin(radians(p.latitude))
+      SELECT id, name, postcode, latitude, longitude, (3959 * acos(
+          cos(radians(?)) * cos(radians(latitude)) *
+          cos(radians(longitude) - radians(?)) +
+          sin(radians(?)) * sin(radians(latitude))
         )) AS distance
-      FROM ${serviceTable} AS t1
-      JOIN Postcode AS p ON t1.postcode = p.pcd2
+      FROM ${serviceTable}
       WHERE
-        p.latitude BETWEEN ? AND ?
-        AND p.longitude BETWEEN ? AND ?
+        latitude BETWEEN ? AND ?
+        AND longitude BETWEEN ? AND ?
       HAVING distance < ?
       ORDER BY distance ASC
       LIMIT 30
@@ -115,12 +113,11 @@ app.get("/api/search", async (req, res) => {
     res.json(formattedResults);
 
   } catch (err) {
-    console.error("Search Error:", err.message);
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error("Server Error:", err.message);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// --- Start Server ---
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
 });

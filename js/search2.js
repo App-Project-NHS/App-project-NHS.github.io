@@ -34,7 +34,6 @@ tr.innerHTML = `
   <td>${row.postcode}</td>
   <td>${row.telephone || 'N/A'}</td>
   <td>${row.distance || 'N/A'}miles</td>
-  <td><button>Select</button></td>
 `;
     tableBody.appendChild(tr);
   });
