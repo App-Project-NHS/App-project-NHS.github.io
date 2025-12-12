@@ -82,7 +82,7 @@ app.get("/api/search", async (req, res) => {
     const maxLon = patientLon + lonRange;
 
     const distanceQuery = `
-      SELECT id, name, postcode, latitude, longitude, (3959 * acos(
+      SELECT *, (3959 * acos(
           cos(radians(?)) * cos(radians(latitude)) *
           cos(radians(longitude) - radians(?)) +
           sin(radians(?)) * sin(radians(latitude))
